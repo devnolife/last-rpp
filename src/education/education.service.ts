@@ -404,148 +404,84 @@ export class EducationService {
       };
 
       const systemPrompt = `
-      Kamu adalah asisten AI spesialis pendidikan dengan pengalaman mendalam dalam kurikulum Indonesia.
-      Tugasmu adalah menghasilkan Rencana Pelaksanaan Pembelajaran (RPP) yang sangat detail dan komprehensif.
+      Kamu adalah asisten AI spesialis pendidikan dengan keahlian dalam menyusun Rencana Pelaksanaan Pembelajaran (RPP) sesuai Kurikulum Merdeka.
+      Buatlah RPP yang mengikuti format dan pendekatan Kurikulum Merdeka dengan prinsip pembelajaran yang berpusat pada peserta didik.
       
-      Pastikan RPP yang dihasilkan mencakup semua aspek berikut dengan SANGAT DETAIL:
-
-      1. IDENTITAS RPP:
-         - Nama penyusun: Isi lengkap dengan gelar
-         - Institusi: Nama lengkap sekolah/institusi
-         - Tahun pembuatan: Format tahun ajaran (mis. 2024/2025)
-         - Mata pelajaran: Sesuai yang diminta user (tambahkan fokus spesifik jika ada)
-         - Jenjang: Lengkap dengan nama jenjang (SD/SMP/SMA/SMK)
-         - Kelas: Kelas dengan detil tingkat (misal: X MIPA 2, VII-A)
-         - Alokasi waktu: Format [jumlah pertemuan]x[menit per pertemuan] (misal: 2x45 menit)
-         - Tahapan: Detail tahapan pembelajaran (misal: Pertemuan ke-1, Siklus 1)
-
-      2. KOMPONEN PEMBELAJARAN:
-         - Capaian Pembelajaran (CP): Tulis secara LENGKAP dengan merujuk pada kurikulum terbaru, cakupannya HARUS mencakup semua aspek kompetensi (sikap, pengetahuan, keterampilan)
-         - Domain Konten/Elemen: Rinci setiap domain pembelajaran yang terlibat
-         - Tujuan Pembelajaran: Minimal 3-5 tujuan yang SPESIFIK, TERUKUR, dan menggunakan kata kerja operasional yang tepat (ABCD: Audience, Behavior, Condition, Degree)
-         - Konten Utama: Detailkan konten yang akan diajarkan
-         - Prasyarat Pengetahuan: Rinci pengetahuan awal yang HARUS dikuasai siswa sebelum pembelajaran
-         - Pemahaman Bermakna: Penjelasan mendalam tentang esensi pembelajaran yang ingin ditanamkan
-         - Profil Pelajar Pancasila: Identifikasi minimal 3 dimensi profil pelajar yang dikembangkan dengan penjelasan SPESIFIK bagaimana pembelajaran mengembangkan dimensi tersebut
-         - Sarana Prasarana: Daftar DETAIL semua peralatan, media, dan sumber daya yang diperlukan
-         - Target Peserta Didik: Spesifikasi karakteristik peserta didik yang menjadi sasaran
-         - Jumlah Peserta Didik: Angka pasti/perkiraan dengan rentang jumlah siswa
-         - Model Pembelajaran: Jelaskan dengan DETAIL model yang digunakan (PBL, Inquiry, Discovery, dll) beserta ALASAN pemilihan model tersebut
-         - Sumber Belajar: Daftar LENGKAP dengan referensi format akademik (penulis, tahun, judul, penerbit)
-
-      3. KEGIATAN PEMBELAJARAN:
-         - Kegiatan Awal (${timeAllocation.awal} Menit): Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
-            * Harus mencakup: salam pembuka, doa, cek kehadiran, apersepsi, motivasi, penyampaian tujuan pembelajaran, pre-test/review
-            * Berikan pertanyaan spesifik yang digunakan untuk memancing pengetahuan awal siswa
-            * Jelaskan bagaimana guru mengaitkan materi dengan kehidupan sehari-hari
-         
-         - Kegiatan Inti (${timeAllocation.inti} Menit): Minimal 7-10 aktivitas DETAIL dengan tahapan waktu spesifik
-            * Harus mengikuti sintak model pembelajaran yang dipilih
-            * Untuk setiap aktivitas: (1) apa yang dilakukan guru, (2) apa yang dilakukan siswa, (3) berapa lama aktivitas berlangsung, (4) pertanyaan apa yang diajukan, (5) bagaimana pengelompokan siswa
-            * Sertakan VARIASI metode: individu, berpasangan, kelompok kecil, diskusi kelas
-            * Jelaskan bagaimana guru memfasilitasi pencapaian tujuan pembelajaran
-            * Sertakan strategi diferensiasi untuk siswa dengan kemampuan berbeda
-            * Cantumkan pertanyaan-pertanyaan kunci yang mendorong HOTS (Higher Order Thinking Skills)
-         
-         - Kegiatan Penutup (${timeAllocation.akhir} Menit): Minimal 5 aktivitas DETAIL dengan durasi spesifik
-            * Harus mencakup: refleksi, kesimpulan, post-test/evaluasi, umpan balik, penyampaian materi selanjutnya, penugasan, dan salam penutup
-            * Berikan contoh SPESIFIK pertanyaan refleksi
-            * Jelaskan bagaimana guru menilai pencapaian tujuan pembelajaran
-
-      4. MATERI DAN ASSESSMENT:
-         - Bahan Ajar: 
-            * Teori LENGKAP dengan penjelasan konsep dan aplikasi
-            * Contoh-contoh yang relevan dan kontekstual
-            * Teks/materi lengkap yang akan digunakan (minimal 250-300 kata jika berbentuk teks)
-            * Materi visual (deskripsi detail gambar/grafik/bagan yang digunakan)
-         
-         - Remedial: 
-            * Aktivitas SPESIFIK untuk siswa yang belum mencapai KKM
-            * Strategi intervensi berbeda sesuai jenis kesulitan yang dihadapi
-            * Instrumen penilaian khusus untuk remedial
-         
-         - Pengayaan: 
-            * Minimal 3 aktivitas DETAIL untuk siswa yang telah mencapai KKM
-            * Aktivitas yang mendorong eksplorasi lebih dalam atau aplikasi nyata
-            * Produk/output yang diharapkan dari aktivitas pengayaan
-         
-         - Assessment: 
-            * WAJIB MENGGUNAKAN FORMAT RUBRIK
-         1. Rubrik penilaian pengetahuan
-             a. Teknik penilaian: Tes tertulis/lisan/praktik (sesuaikan dengan mata pelajaran)
-             b. Bentuk Instrumen: Sesuaikan dengan mata pelajaran (contoh: menyebutkan konsep, menjelaskan proses, mendemonstrasikan keterampilan)
-             c. Kisi-kisi: Jelaskan apa yang diuji dan sumber materinya
-             d. Instrumen penilaian: (Sertakan minimal 5 soal sesuai materi)
-
-          2. Rubrik untuk penilaian keterampilan
-             Gunakan tabel dengan format:
-
-             | No | Aspek | Deskripsi | Skor |
-             |----|-------|-----------|------|
-             | 1 | Aspek 1 | 1. Sangat baik | 5 |
-             |   |         | 2. Baik | 4 |
-             |   |         | 3. Cukup | 3 |
-             |   |         | 4. Kurang | 2 |
-             |   |         | 5. Sangat kurang | 1 |
-             | 2 | Aspek 2 | a. Sangat baik | 5 |
-             |   |         | b. Baik | 4 |
-             |   |         | c. Cukup | 3 |
-             |   |         | d. Kurang | 2 |
-             |   |         | e. Sangat kurang | 1 |
-
-             Penentuan Nilai: nilaiSiswa = skorDiperoleh/skorMaksimal * 100
-
-          * Tambahkan juga penilaian aspek lain sesuai dengan konteks pembelajaran dengan format yang serupa
-          * Sediakan instrumen lengkap dengan soal-soal SPESIFIK (minimal 5 soal per jenis)
-          * Rubrik penilaian DETAIL dengan kriteria dan pembobotan
-          * Pedoman penskoran dan interpretasi hasil
-          * Strategi umpan balik kepada siswa
-
-      Berikan output dalam format JSON yang sangat terstruktur dan komprehensif.
-
-      PENTING: Pastikan semua detil diisi dengan SANGAT LENGKAP dan SPESIFIK sesuai dengan data masukan. Gunakan kalimat lengkap dan paragraf yang kohesif untuk setiap bagian narasi. Jangan gunakan placeholder atau template language. Semua informasi harus KONTEKSTUAL dan BERMAKNA. Pastikan output HANYA berisi JSON tanpa tag backtick atau tambahan apapun.
+      Format RPP Kurikulum Merdeka harus mencakup:
+      
+      1. IDENTITAS - Informasi dasar (satuan pendidikan, mata pelajaran, kelas, alokasi waktu, tahun ajaran)
+      
+      2. CAPAIAN PEMBELAJARAN (CP) DAN TUJUAN PEMBELAJARAN:
+         - Capaian Pembelajaran sesuai fase yang relevan
+         - Elemen/Sub-elemen yang akan dicapai
+         - Tujuan pembelajaran yang spesifik, terukur, dan bermakna
+         - Kata kerja operasional yang sesuai dengan level kognitif peserta didik
+      
+      3. PROFIL PELAJAR PANCASILA:
+         - Dimensi profil pelajar pancasila yang dikembangkan dalam pembelajaran
+         - Elemen dan sub-elemen yang relevan dengan materi
+      
+      4. PEMAHAMAN BERMAKNA:
+         - Pertanyaan pemantik yang memancing rasa ingin tahu
+         - Konteks kehidupan nyata yang relevan dengan peserta didik
+      
+      5. KEGIATAN PEMBELAJARAN:
+         - Kegiatan Pembuka (${timeAllocation.awal} menit): Building connection, menyampaikan tujuan, memotivasi
+         - Kegiatan Inti (${timeAllocation.inti} menit): Eksplorasi, elaborasi, konfirmasi dengan pendekatan student-centered
+         - Kegiatan Penutup (${timeAllocation.akhir} menit): Refleksi, kesimpulan, umpan balik, rencana tindak lanjut
+      
+      6. ASESMEN:
+         - Asesmen diagnostik (untuk mengetahui kondisi awal peserta didik)
+         - Asesmen formatif (selama proses pembelajaran)
+         - Asesmen sumatif (di akhir pembelajaran)
+         - RUBRIK PENILAIAN LENGKAP dengan kriteria yang jelas
+      
+      7. DIFERENSIASI PEMBELAJARAN:
+         - Diferensiasi konten, proses, dan produk
+         - Strategi untuk mengakomodasi keberagaman peserta didik
+      
+      8. REMEDIAL DAN PENGAYAAN:
+         - Program remedial untuk peserta didik yang belum mencapai tujuan
+         - Program pengayaan untuk peserta didik yang sudah mencapai tujuan
+      
+      Pastikan RPP menggunakan pendekatan:
+      - Pembelajaran berbasis proyek/masalah sesuai konteks
+      - Kolaboratif dan interaktif
+      - Mengembangkan kemampuan berpikir tingkat tinggi (HOTS)
+      - Mengintegrasikan teknologi jika relevan
+      - Memberikan ruang untuk voice dan choice peserta didik
+      
+      Output dalam format JSON. Gunakan terminologi Kurikulum Merdeka yang tepat dan sesuai dengan karakteristik pembelajaran abad 21.
       `;
 
       const userPrompt = `
-      Anda adalah asisten AI yang ahli dalam menyusun Rencana Pelaksanaan Pembelajaran (RPP).
-      Buatkan RPP lengkap dengan detail berikut:
+      Buatlah RPP Kurikulum Merdeka yang lengkap berdasarkan informasi berikut:
 
-      Nama Penyusun: ${completeData.nama_penyusun || 'Guru Professional'}
-      Institusi: ${completeData.institusi || 'Sekolah Indonesia'}
-      Tahun Pembuatan: ${completeData.tahun_pembuatan || '2023/2024'}
       Mata Pelajaran: ${completeData.mata_pelajaran}
       Jenjang: ${completeData.jenjang}
-      Kelas: ${completeData.kelas}
+      Kelas/Fase: ${completeData.kelas}
       Alokasi Waktu: ${completeData.alokasi_waktu || '2x45 menit'} (Total: ${timeAllocation.total} menit)
-      Tahapan: ${completeData.tahapan || 'Pertemuan ke-1'}
-      Capaian Pembelajaran (CP): ${completeData.capaian_pembelajaran || '-'}
-      Domain Konten/Elemen: ${completeData.domain_konten || '-'}
-      Tujuan pembelajaran: ${completeData.tujuan_pembelajaran || '-'}
-      Konten Utama: ${completeData.konten_utama || '-'}
-      Prasyarat pengetahuan/Keterampilan: ${completeData.prasyarat || '-'}
-      Pemahaman bermakna: ${completeData.pemahaman_bermakna || '-'}
-      Profil pelajar pancasila yang berkaitan: ${completeData.profil_pelajar || '-'}
-      Sarana dan Prasarana: ${completeData.sarana || '-'}
-      Target peserta didik: ${completeData.target_peserta || '-'}
-      Jumlah peserta didik: ${completeData.jumlah_peserta || '-'}
-      Model pembelajaran: ${completeData.model_pembelajaran || '-'}
-      Sumber belajar: ${completeData.sumber_belajar || '-'}
+      ${completeData.capaian_pembelajaran ? `Capaian Pembelajaran: ${completeData.capaian_pembelajaran}` : ''}
+      ${completeData.tujuan_pembelajaran ? `Tujuan Pembelajaran: ${completeData.tujuan_pembelajaran}` : ''}
+      ${completeData.konten_utama ? `Konten/Materi: ${completeData.konten_utama}` : ''}
+      ${completeData.model_pembelajaran ? `Model Pembelajaran: ${completeData.model_pembelajaran}` : ''}
       ${completeData.catatan ? `Catatan Tambahan: ${completeData.catatan}` : ''}
 
-      Hasilkan RPP yang lengkap dengan isi untuk setiap bagian berikut dengan PEMBAGIAN WAKTU YANG TEPAT:
-      1. Kegiatan awal (${timeAllocation.awal} Menit) - berisi langkah-langkah kegiatan pendahuluan yang dilakukan guru
-      2. Kegiatan Inti (${timeAllocation.inti} Menit) - berisi langkah-langkah kegiatan utama pembelajaran dengan detail aktivitas
-      3. Penutup (${timeAllocation.akhir} Menit) - berisi langkah-langkah kegiatan penutup pembelajaran
-      4. Bahan ajar - berisi materi yang akan diajarkan secara detail
-      5. Remedial - kegiatan remedial untuk siswa yang belum mencapai KKM
-      6. Pengayaan - kegiatan pengayaan untuk siswa yang sudah mencapai KKM
-      7. Asessmen - berisi instrumen penilaian, rubrik, dan kriteria
+      Hasilkan RPP Kurikulum Merdeka yang mencakup:
+      1. Identitas pembelajaran (satuan pendidikan, mata pelajaran, fase/kelas, alokasi waktu)
+      2. Capaian Pembelajaran dan elemen yang akan dicapai
+      3. Tujuan pembelajaran yang bermakna dan terukur
+      4. Profil Pelajar Pancasila yang dikembangkan
+      5. Pemahaman bermakna dan pertanyaan pemantik
+      6. Kegiatan pembelajaran student-centered:
+         - Kegiatan Pembuka: ${timeAllocation.awal} menit
+         - Kegiatan Inti: ${timeAllocation.inti} menit
+         - Kegiatan Penutup: ${timeAllocation.akhir} menit
+      7. Asesmen (diagnostik, formatif, sumatif) dengan rubrik penilaian lengkap
+      8. Diferensiasi pembelajaran (konten, proses, produk)
+      9. Program remedial dan pengayaan
 
-      PENTING: Pastikan pembagian aktivitas dan estimasi waktu per aktivitas sesuai dengan total alokasi waktu yang tersedia:
-      - Kegiatan Awal: ${timeAllocation.awal} menit
-      - Kegiatan Inti: ${timeAllocation.inti} menit  
-      - Kegiatan Penutup: ${timeAllocation.akhir} menit
-      Total pembelajaran: ${timeAllocation.total} menit
+      Buatlah RPP yang mengutamakan pembelajaran bermakna, kontekstual, dan sesuai dengan prinsip Kurikulum Merdeka.
       `;
 
       const result = await this.generateContent(systemPrompt, userPrompt, schemaExample);
