@@ -143,11 +143,11 @@ export class EducationService {
         return false;
       }
 
-      // For questions validation specifically, handle the new structure
+      // For questions validation specifically, handle potential variations in structure
       if (path === 'questions' || path.startsWith('questions.')) {
         // Check that all required top-level keys exist in questions object
         if (path === 'questions') {
-          const requiredKeys = ['pilihan_ganda', 'essay'];
+          const requiredKeys = ['pilihan_ganda', 'menjodohkan', 'benar_salah', 'essay'];
           for (const key of requiredKeys) {
             if (!(key in response)) {
               console.error(`Structure mismatch at ${path}: missing required key ${key}`);
@@ -161,13 +161,23 @@ export class EducationService {
             return false;
           }
 
+          // Validate benar_salah is an array
+          if (!Array.isArray(response.benar_salah)) {
+            console.error(`Structure mismatch at ${path}.benar_salah: expected array`);
+            return false;
+          }
+
           // Validate essay is an array
           if (!Array.isArray(response.essay)) {
             console.error(`Structure mismatch at ${path}.essay: expected array`);
             return false;
           }
 
-          return true;
+          // Validate menjodohkan is an object
+          if (typeof response.menjodohkan !== 'object' || response.menjodohkan === null) {
+            console.error(`Structure mismatch at ${path}.menjodohkan: expected object`);
+            return false;
+          }
         }
 
         return true;
@@ -193,12 +203,73 @@ export class EducationService {
     return true;
   }
 
+  // Helper method to parse allocation time and calculate time distribution
+  private parseTimeAllocation(alokasiWaktu: string): { total: number, awal: number, inti: number, akhir: number } {
+    try {
+      // Parse format like "2x45 menit", "3x40 menit", "90 menit", etc.
+      let totalMinutes = 0;
+
+      // Remove extra spaces and convert to lowercase
+      const cleanInput = alokasiWaktu.toLowerCase().trim();
+
+      // Check for format "NxM menit" 
+      const multiplyMatch = cleanInput.match(/(\d+)\s*x\s*(\d+)\s*menit/);
+      if (multiplyMatch) {
+        const sessions = parseInt(multiplyMatch[1]);
+        const minutesPerSession = parseInt(multiplyMatch[2]);
+        totalMinutes = sessions * minutesPerSession;
+      }
+      // Check for format "N menit"
+      else {
+        const directMatch = cleanInput.match(/(\d+)\s*menit/);
+        if (directMatch) {
+          totalMinutes = parseInt(directMatch[1]);
+        }
+      }
+
+      // Default to 90 minutes if parsing fails
+      if (totalMinutes <= 0) {
+        totalMinutes = 90;
+      }
+
+      // Calculate time distribution
+      const waktuAkhir = 10; // Fixed 10 minutes for closing
+      let waktuAwal = Math.min(15, Math.max(10, Math.floor(totalMinutes * 0.15))); // 10-15 minutes for opening
+
+      // Ensure minimum time for core activities
+      if (totalMinutes - waktuAwal - waktuAkhir < 20) {
+        waktuAwal = Math.max(10, totalMinutes - waktuAkhir - 20);
+      }
+
+      const waktuInti = totalMinutes - waktuAwal - waktuAkhir;
+
+      return {
+        total: totalMinutes,
+        awal: waktuAwal,
+        inti: waktuInti,
+        akhir: waktuAkhir
+      };
+    } catch (error) {
+      // Default allocation if parsing fails
+      return {
+        total: 90,
+        awal: 15,
+        inti: 65,
+        akhir: 10
+      };
+    }
+  }
+
   async generateLesson(data: LessonDto): Promise<EducationRppResponse> {
     try {
       // Check for required fields (mata_pelajaran, jenjang, kelas)
       if (!data.mata_pelajaran || !data.jenjang || !data.kelas) {
         throw new Error('Required fields missing: mata_pelajaran, jenjang, and kelas are mandatory');
       }
+
+      // Calculate dynamic time allocation
+      const alokasiWaktuInput = data.alokasi_waktu || '2x45 menit';
+      const timeAllocation = this.parseTimeAllocation(alokasiWaktuInput);
 
       // Fill in missing fields with AI-generated content if not provided
       const autoGeneratePrompt = `
@@ -341,7 +412,7 @@ export class EducationService {
       1. IDENTITAS RPP:
          - Nama penyusun: Isi lengkap dengan gelar
          - Institusi: Nama lengkap sekolah/institusi
-         - Tahun pembuatan: Format tahun ajaran (mis. 2023/2024)
+         - Tahun pembuatan: Format tahun ajaran (mis. 2024/2025)
          - Mata pelajaran: Sesuai yang diminta user (tambahkan fokus spesifik jika ada)
          - Jenjang: Lengkap dengan nama jenjang (SD/SMP/SMA/SMK)
          - Kelas: Kelas dengan detil tingkat (misal: X MIPA 2, VII-A)
@@ -363,12 +434,12 @@ export class EducationService {
          - Sumber Belajar: Daftar LENGKAP dengan referensi format akademik (penulis, tahun, judul, penerbit)
 
       3. KEGIATAN PEMBELAJARAN:
-         - Kegiatan Awal (15 Menit): Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
+         - Kegiatan Awal (${timeAllocation.awal} Menit): Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
             * Harus mencakup: salam pembuka, doa, cek kehadiran, apersepsi, motivasi, penyampaian tujuan pembelajaran, pre-test/review
             * Berikan pertanyaan spesifik yang digunakan untuk memancing pengetahuan awal siswa
             * Jelaskan bagaimana guru mengaitkan materi dengan kehidupan sehari-hari
          
-         - Kegiatan Inti (90 Menit): Minimal 7-10 aktivitas DETAIL dengan tahapan waktu spesifik
+         - Kegiatan Inti (${timeAllocation.inti} Menit): Minimal 7-10 aktivitas DETAIL dengan tahapan waktu spesifik
             * Harus mengikuti sintak model pembelajaran yang dipilih
             * Untuk setiap aktivitas: (1) apa yang dilakukan guru, (2) apa yang dilakukan siswa, (3) berapa lama aktivitas berlangsung, (4) pertanyaan apa yang diajukan, (5) bagaimana pengelompokan siswa
             * Sertakan VARIASI metode: individu, berpasangan, kelompok kecil, diskusi kelas
@@ -376,7 +447,7 @@ export class EducationService {
             * Sertakan strategi diferensiasi untuk siswa dengan kemampuan berbeda
             * Cantumkan pertanyaan-pertanyaan kunci yang mendorong HOTS (Higher Order Thinking Skills)
          
-         - Kegiatan Penutup (15 Menit): Minimal 5 aktivitas DETAIL dengan durasi spesifik
+         - Kegiatan Penutup (${timeAllocation.akhir} Menit): Minimal 5 aktivitas DETAIL dengan durasi spesifik
             * Harus mencakup: refleksi, kesimpulan, post-test/evaluasi, umpan balik, penyampaian materi selanjutnya, penugasan, dan salam penutup
             * Berikan contoh SPESIFIK pertanyaan refleksi
             * Jelaskan bagaimana guru menilai pencapaian tujuan pembelajaran
@@ -445,7 +516,7 @@ export class EducationService {
       Mata Pelajaran: ${completeData.mata_pelajaran}
       Jenjang: ${completeData.jenjang}
       Kelas: ${completeData.kelas}
-      Alokasi Waktu: ${completeData.alokasi_waktu || '2x45 menit'}
+      Alokasi Waktu: ${completeData.alokasi_waktu || '2x45 menit'} (Total: ${timeAllocation.total} menit)
       Tahapan: ${completeData.tahapan || 'Pertemuan ke-1'}
       Capaian Pembelajaran (CP): ${completeData.capaian_pembelajaran || '-'}
       Domain Konten/Elemen: ${completeData.domain_konten || '-'}
@@ -461,14 +532,20 @@ export class EducationService {
       Sumber belajar: ${completeData.sumber_belajar || '-'}
       ${completeData.catatan ? `Catatan Tambahan: ${completeData.catatan}` : ''}
 
-      Hasilkan RPP yang lengkap dengan isi untuk setiap bagian berikut:
-      1. Kegiatan awal (15 Menit) - berisi langkah-langkah kegiatan pendahuluan yang dilakukan guru
-      2. Kegiatan Inti (90 Menit) - berisi langkah-langkah kegiatan utama pembelajaran dengan detail aktivitas
-      3. Penutup (15 Menit) - berisi langkah-langkah kegiatan penutup pembelajaran
+      Hasilkan RPP yang lengkap dengan isi untuk setiap bagian berikut dengan PEMBAGIAN WAKTU YANG TEPAT:
+      1. Kegiatan awal (${timeAllocation.awal} Menit) - berisi langkah-langkah kegiatan pendahuluan yang dilakukan guru
+      2. Kegiatan Inti (${timeAllocation.inti} Menit) - berisi langkah-langkah kegiatan utama pembelajaran dengan detail aktivitas
+      3. Penutup (${timeAllocation.akhir} Menit) - berisi langkah-langkah kegiatan penutup pembelajaran
       4. Bahan ajar - berisi materi yang akan diajarkan secara detail
       5. Remedial - kegiatan remedial untuk siswa yang belum mencapai KKM
       6. Pengayaan - kegiatan pengayaan untuk siswa yang sudah mencapai KKM
       7. Asessmen - berisi instrumen penilaian, rubrik, dan kriteria
+
+      PENTING: Pastikan pembagian aktivitas dan estimasi waktu per aktivitas sesuai dengan total alokasi waktu yang tersedia:
+      - Kegiatan Awal: ${timeAllocation.awal} menit
+      - Kegiatan Inti: ${timeAllocation.inti} menit  
+      - Kegiatan Penutup: ${timeAllocation.akhir} menit
+      Total pembelajaran: ${timeAllocation.total} menit
       `;
 
       const result = await this.generateContent(systemPrompt, userPrompt, schemaExample);
@@ -621,6 +698,19 @@ export class EducationService {
               "jawaban_benar": "A. Option 1"
             }
           ],
+          "menjodohkan": {
+            "instruksi": "Sample instructions",
+            "kolom_a": ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+            "kolom_b": ["Match 1", "Match 2", "Match 3", "Match 4", "Match 5"],
+            "jawaban": { "Item 1": "Match 3", "Item 2": "Match 1", "Item 3": "Match 5", "Item 4": "Match 2", "Item 5": "Match 4" }
+          },
+          "benar_salah": [
+            {
+              "pernyataan": "Sample statement 1",
+              "jawaban": true,
+              "referensi_paragraf": 1
+            }
+          ],
           "essay": [
             {
               "pertanyaan": "Sample essay question 1",
@@ -633,123 +723,133 @@ export class EducationService {
 
       const systemPrompt = `
       Kamu adalah seorang ahli dalam membuat soal dan penilaian untuk siswa di Indonesia.
-      Tugasmu adalah menghasilkan soal-soal berkualitas tinggi sesuai dengan materi pembelajaran.
+      Buatlah soal yang berkualitas, kontekstual, dan sesuai dengan materi pembelajaran.
       
-      PENTING: Kamu HARUS mengembalikan respons dalam format JSON yang VALID dan sesuai dengan struktur berikut:
+      Soal yang dibuat harus mencakup 4 jenis yang SALING TERHUBUNG dalam tema dan materi:
       
+      1. PILIHAN GANDA - Buatlah 5 soal pilihan ganda dengan 4 opsi jawaban (A, B, C, D)
+         - Setiap soal pilihan ganda harus memiliki paragraf narasi atau teks (minimal 5-7 kalimat)
+         - Paragraf harus terkait dengan konten materi dan menjadi dasar pertanyaan
+         - Total harus ada 5 paragraf (satu untuk setiap soal) yang saling berkaitan dalam tema
+         - Pertanyaan harus langsung berkaitan dengan isi paragraf dan menguji pemahaman siswa
+      
+      2. MENJODOHKAN - Buatlah 5 soal menjodohkan
+         - Konten menjodohkan harus BERKAITAN dengan isi paragraf pada soal pilihan ganda
+         - Konsep yang diuji harus sama dengan yang ada di paragraf
+      
+      3. BENAR-SALAH - Buatlah 5 pernyataan benar/salah
+         - Pernyataan harus LANGSUNG mengacu pada informasi dalam paragraf di soal pilihan ganda
+         - Gunakan informasi spesifik dari paragraf untuk membuat pernyataan
+      
+      4. ESSAY - Buatlah 2 soal essay/uraian
+         - Soal essay harus meminta siswa menganalisis, mensintesis, atau mengevaluasi informasi dari paragraf
+         - Harus menggunakan konteks yang SAMA dengan paragraf dalam soal pilihan ganda
+      
+      KETERKAITAN ANTAR SOAL:
+      - Pastikan semua jenis soal membahas tema/topik yang SAMA
+      - Gunakan kosakata, konsep, dan konteks yang konsisten di semua soal
+      - Soal benar-salah dan essay harus mengacu pada informasi dari paragraf di soal pilihan ganda
+      - Menciptakan pengalaman tes yang kohesif dan terintegrasi
+      
+      OUTPUT HARUS DALAM FORMAT JSON SEPERTI INI:
       {
         "questions": {
           "pilihan_ganda": [
             {
-              "paragraf": "Teks paragraf yang berisi materi",
-              "pertanyaan": "Pertanyaan yang berkaitan dengan paragraf",
+              "paragraf": "Teks paragraf 1",
+              "pertanyaan": "Pertanyaan 1",
               "opsi": ["A. Pilihan 1", "B. Pilihan 2", "C. Pilihan 3", "D. Pilihan 4"],
               "jawaban_benar": "A. Pilihan 1"
             },
-            ... (total 30 soal pilihan ganda)
+            ... 4 soal lainnya dengan struktur yang sama ...
+          ],
+          "menjodohkan": {
+            "instruksi": "Petunjuk menjodohkan",
+            "kolom_a": ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5"],
+            "kolom_b": ["Match 1", "Match 2", "Match 3", "Match 4", "Match 5"],
+            "jawaban": { 
+              "Item 1": "Match 3", 
+              "Item 2": "Match 1", 
+              "Item 3": "Match 5", 
+              "Item 4": "Match 2", 
+              "Item 5": "Match 4" 
+            }
+          },
+          "benar_salah": [
+            {
+              "pernyataan": "Pernyataan 1",
+              "jawaban": true,
+              "referensi_paragraf": 1
+            },
+            ... 4 pernyataan lainnya dengan struktur yang sama ...
           ],
           "essay": [
             {
-              "pertanyaan": "Pertanyaan essay yang meminta analisis",
-              "panduan_jawaban": "Panduan jawaban untuk guru",
+              "pertanyaan": "Pertanyaan essay 1",
+              "panduan_jawaban": "Panduan jawaban 1",
               "referensi_paragraf": 1
             },
-            ... (total 5 soal essay)
+            {
+              "pertanyaan": "Pertanyaan essay 2",
+              "panduan_jawaban": "Panduan jawaban 2",
+              "referensi_paragraf": 2
+            }
           ]
         }
       }
       
-      PERSYARATAN SOAL:
-      1. PILIHAN GANDA (30 soal):
-         - Setiap soal harus memiliki paragraf narasi/teks (5-7 kalimat)
-         - Paragraf harus terkait dengan materi pembelajaran
-         - Pertanyaan harus langsung berkaitan dengan isi paragraf
-         - Setiap soal harus memiliki 4 pilihan jawaban (A, B, C, D)
-         - Jawaban benar harus ditentukan dengan jelas
-      
-      2. ESSAY (5 soal):
-         - Soal essay harus meminta siswa menganalisis, mensintesis, atau mengevaluasi
-         - Setiap soal essay harus mengacu pada paragraf tertentu dari soal pilihan ganda
-         - Berikan panduan jawaban yang jelas untuk guru
-         - Tentukan nomor paragraf yang menjadi referensi (referensi_paragraf)
-      
-      PENTING:
-      - JANGAN menambahkan teks atau penjelasan di luar struktur JSON
-      - JANGAN menggunakan format markdown atau kode
-      - JANGAN menambahkan komentar atau catatan tambahan
-      - Pastikan JSON valid dan dapat di-parse
-      - Pastikan jumlah soal sesuai (30 pilihan ganda, 5 essay)
+      PERHATIAN PENTING:
+      1. Respons HARUS dalam bentuk JSON murni tanpa kode markdown atau teks di luar JSON
+      2. Struktur JSON HARUS tepat seperti contoh di atas
+      3. Semua kunci (keys) dalam JSON harus sama persis dengan contoh
+      4. Nilai harus sesuai dengan tipe data yang diharapkan
+      5. Pastikan format JSON valid dan dapat di-parse
       `;
 
       const userPrompt = `
-      Buatkan soal evaluasi untuk:
-      
+      Buatlah soal evaluasi yang sesuai dengan informasi berikut:
+
       Mata Pelajaran: ${data.mata_pelajaran}
       Kelas: ${data.kelas}
       Materi: ${data.materi}
+      Jumlah Soal: ${data.jumlah || '10'}
       
-      Hasilkan:
-      1. 30 soal pilihan ganda dengan paragraf, pertanyaan, 4 pilihan jawaban, dan jawaban benar
-      2. 5 soal essay dengan pertanyaan, panduan jawaban, dan referensi ke paragraf tertentu
+      Hasilkan 4 jenis soal yang SALING TERHUBUNG dalam tema yang SAMA:
       
-      Pastikan semua soal berkaitan dengan materi yang diberikan dan sesuai dengan tingkat kelas.
+      1. PILIHAN GANDA (5 soal) - Setiap soal harus memiliki:
+         - Paragraf yang langsung mengacu pada materi (5-7 kalimat)
+         - Pertanyaan yang langsung berkaitan dengan isi paragraf
+         - 4 pilihan jawaban (A, B, C, D)
+      
+      2. MENJODOHKAN (5 soal)
+         - Berhubungan dengan tema/konten dalam paragraf pilihan ganda
+      
+      3. BENAR-SALAH (5 soal)
+         - Pernyataan yang LANGSUNG mengacu pada informasi dalam paragraf pilihan ganda
+         - Jelaskan paragraf mana yang menjadi acuan setiap pernyataan
+      
+      4. ESSAY (2 soal)
+         - Pertanyaan yang meminta analisis atau penerapan informasi dari paragraf
+         - Jelaskan paragraf mana yang menjadi acuan setiap pertanyaan essay
+      
+      PERHATIKAN:
+      - Pastikan ada keterkaitan yang jelas antara paragraf, pertanyaan pilihan ganda, soal menjodohkan, 
+        pernyataan benar-salah, dan pertanyaan essay
+      - Soal benar-salah dan essay harus jelas menunjukkan paragraf mana yang menjadi referensinya
+      - Buat soal yang kohesif dan terintegrasi, bukan soal-soal yang berdiri sendiri
       `;
 
-      // Generate content with more specific instructions
       const result = await this.generateContent(systemPrompt, userPrompt, schemaExample);
 
       // Parse the string result into a JSON object
       const parsedResult = JSON.parse(result);
 
-      // Validate the structure of the parsed result
-      if (!parsedResult.questions ||
-        !Array.isArray(parsedResult.questions.pilihan_ganda) ||
-        !Array.isArray(parsedResult.questions.essay)) {
-        throw new Error('Invalid response structure: missing required fields or incorrect data types');
-      }
-
-      // Validate the number of questions with some flexibility
-      const pilihanGandaCount = parsedResult.questions.pilihan_ganda.length;
-      const essayCount = parsedResult.questions.essay.length;
-
-      // Allow for a small margin of error (at least 28 multiple choice questions)
-      if (pilihanGandaCount < 28) {
-        throw new Error(`Invalid number of multiple choice questions: expected at least 28, got ${pilihanGandaCount}`);
-      }
-
-      // If we have fewer than 30 multiple choice questions, add a note to the response
-      let message = `Questions for ${data.mata_pelajaran} generated successfully`;
-      if (pilihanGandaCount < 30) {
-        message += ` (Note: Generated ${pilihanGandaCount} multiple choice questions instead of 30)`;
-      }
-
-      // Validate essay questions (should be exactly 5)
-      if (essayCount !== 5) {
-        throw new Error(`Invalid number of essay questions: expected 5, got ${essayCount}`);
-      }
-
-      // Validate the structure of each question
-      for (let i = 0; i < parsedResult.questions.pilihan_ganda.length; i++) {
-        const question = parsedResult.questions.pilihan_ganda[i];
-        if (!question.paragraf || !question.pertanyaan || !Array.isArray(question.opsi) || question.opsi.length !== 4 || !question.jawaban_benar) {
-          throw new Error(`Invalid multiple choice question structure at index ${i}`);
-        }
-      }
-
-      for (let i = 0; i < parsedResult.questions.essay.length; i++) {
-        const question = parsedResult.questions.essay[i];
-        if (!question.pertanyaan || !question.panduan_jawaban || typeof question.referensi_paragraf !== 'number') {
-          throw new Error(`Invalid essay question structure at index ${i}`);
-        }
-      }
-
       return {
         status: 'success',
-        message: message,
+        message: `Questions for ${data.mata_pelajaran} generated successfully`,
         questions: parsedResult
       };
     } catch (error) {
-      console.error('Error generating questions:', error);
       return {
         status: 'error',
         message: error.message
