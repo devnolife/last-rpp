@@ -13,9 +13,92 @@ dotenv.config();
 
 @Injectable()
 export class EducationService {
+  [x: string]: any;
   private readonly GEMINI_API_KEY = process.env.GEMINI_API_KEY;
   private readonly GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
   private readonly MAX_RETRIES = 3;
+
+  private parseTimeAllocation(alokasiWaktu: string): { total: number, awal: number, inti: number, akhir: number, sesi: number, menitPerSesi: number } {
+    try {
+      // Parse format like "2x45 menit", "3x40 menit", "90 menit", etc.
+      let totalMinutes = 0;
+      let sessions = 1;
+      let minutesPerSession = 0;
+
+      // Remove extra spaces and convert to lowercase
+      const cleanInput = alokasiWaktu.toLowerCase().trim();
+
+      // Check for format "NxM menit" 
+      const multiplyMatch = cleanInput.match(/(\d+)\s*x\s*(\d+)\s*menit/);
+      if (multiplyMatch) {
+        sessions = parseInt(multiplyMatch[1]);
+        minutesPerSession = parseInt(multiplyMatch[2]);
+        totalMinutes = sessions * minutesPerSession;
+      }
+      // Check for format "N menit"
+      else {
+        const directMatch = cleanInput.match(/(\d+)\s*menit/);
+        if (directMatch) {
+          totalMinutes = parseInt(directMatch[1]);
+          minutesPerSession = totalMinutes;
+          sessions = 1;
+        }
+      }
+
+      // Default to 90 minutes if parsing fails
+      if (totalMinutes <= 0) {
+        totalMinutes = 90;
+        minutesPerSession = 90;
+        sessions = 1;
+      }
+
+      // Calculate time distribution per session with better logic
+      let waktuAwal, waktuAkhir, waktuInti;
+
+      if (minutesPerSession <= 40) {
+        // For shorter sessions (≤40 minutes)
+        waktuAwal = 5;
+        waktuAkhir = 5;
+        waktuInti = minutesPerSession - 10;
+      } else if (minutesPerSession <= 60) {
+        // For medium sessions (41-60 minutes)
+        waktuAwal = 8;
+        waktuAkhir = 7;
+        waktuInti = minutesPerSession - 15;
+      } else {
+        // For longer sessions (>60 minutes)
+        waktuAwal = 10;
+        waktuAkhir = 10;
+        waktuInti = minutesPerSession - 20;
+      }
+
+      // Ensure no negative values
+      if (waktuInti < 10) {
+        waktuInti = Math.max(10, minutesPerSession - waktuAwal - waktuAkhir);
+        waktuAwal = Math.max(3, Math.floor((minutesPerSession - waktuInti) / 2));
+        waktuAkhir = minutesPerSession - waktuAwal - waktuInti;
+      }
+
+      return {
+        total: totalMinutes,
+        awal: waktuAwal,
+        inti: waktuInti,
+        akhir: waktuAkhir,
+        sesi: sessions,
+        menitPerSesi: minutesPerSession
+      };
+    } catch (error) {
+      // Default allocation if parsing fails
+      return {
+        total: 90,
+        awal: 10,
+        inti: 70,
+        akhir: 10,
+        sesi: 1,
+        menitPerSesi: 90
+      };
+    }
+  }
 
   private async generateContent(systemPrompt: string, userPrompt: string, schemaExample: any = null): Promise<string> {
     let retries = 0;
@@ -201,65 +284,6 @@ export class EducationService {
 
     // For primitive types, structure is valid
     return true;
-  }
-
-  // Helper method to parse allocation time and calculate time distribution
-  private parseTimeAllocation(alokasiWaktu: string): { total: number, awal: number, inti: number, akhir: number, sesi: number, menitPerSesi: number } {
-    try {
-      // Parse format like "2x45 menit", "3x40 menit", "90 menit", etc.
-      let totalMinutes = 0;
-      let sessions = 1;
-      let minutesPerSession = 0;
-
-      // Remove extra spaces and convert to lowercase
-      const cleanInput = alokasiWaktu.toLowerCase().trim();
-
-      // Check for format "NxM menit" 
-      const multiplyMatch = cleanInput.match(/(\d+)\s*x\s*(\d+)\s*menit/);
-      if (multiplyMatch) {
-        sessions = parseInt(multiplyMatch[1]);
-        minutesPerSession = parseInt(multiplyMatch[2]);
-        totalMinutes = sessions * minutesPerSession;
-      }
-      // Check for format "N menit"
-      else {
-        const directMatch = cleanInput.match(/(\d+)\s*menit/);
-        if (directMatch) {
-          totalMinutes = parseInt(directMatch[1]);
-          minutesPerSession = totalMinutes;
-        }
-      }
-
-      // Default to 90 minutes if parsing fails
-      if (totalMinutes <= 0) {
-        totalMinutes = 90;
-        minutesPerSession = 90;
-      }
-
-      // Calculate time distribution per session
-      const waktuAkhir = Math.round(minutesPerSession * 0.1); // 10% of session time for closing
-      const waktuAwal = Math.round(minutesPerSession * 0.15); // 15% of session time for opening
-      const waktuInti = minutesPerSession - waktuAwal - waktuAkhir; // Remaining time for core activities
-
-      return {
-        total: totalMinutes,
-        awal: waktuAwal,
-        inti: waktuInti,
-        akhir: waktuAkhir,
-        sesi: sessions,
-        menitPerSesi: minutesPerSession
-      };
-    } catch (error) {
-      // Default allocation if parsing fails
-      return {
-        total: 90,
-        awal: 15,
-        inti: 65,
-        akhir: 10,
-        sesi: 1,
-        menitPerSesi: 90
-      };
-    }
   }
 
   async generateLesson(data: LessonDto): Promise<EducationRppResponse> {
