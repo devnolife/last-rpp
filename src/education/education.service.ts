@@ -426,9 +426,17 @@ export class EducationService {
          - Konteks kehidupan nyata yang relevan dengan peserta didik
       
       5. KEGIATAN PEMBELAJARAN:
-         - Kegiatan Pembuka (${timeAllocation.awal} menit): Building connection, menyampaikan tujuan, memotivasi
-         - Kegiatan Inti (${timeAllocation.inti} menit): Eksplorasi, elaborasi, konfirmasi dengan pendekatan student-centered
-         - Kegiatan Penutup (${timeAllocation.akhir} menit): Refleksi, kesimpulan, umpan balik, rencana tindak lanjut
+         - Kegiatan Pembuka (${timeAllocation.awal} menit):Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
+            * Harus mencakup: salam pembuka, doa, cek kehadiran, apersepsi, motivasi, penyampaian tujuan pembelajaran, pre-test/review
+            * Berikan pertanyaan spesifik yang digunakan untuk memancing pengetahuan awal siswa
+            * Jelaskan bagaimana guru mengaitkan materi dengan kehidupan sehari-hari
+            * PENTING: Total waktu semua aktivitas harus TEPAT ${timeAllocation.awal} menit
+         - Kegiatan Inti (${timeAllocation.inti} menit): Eksplorasi, elaborasi, konfirmasi dengan pendekatan student-centered , evaluasi akhir setiap individu
+        - Kegiatan Penutup (${timeAllocation.akhir} Menit): Minimal 5 aktivitas DETAIL dengan durasi spesifik
+            * Harus mencakup: refleksi, kesimpulan, post-test/evaluasi, umpan balik, penyampaian materi selanjutnya, penugasan, dan salam penutup
+            * Berikan contoh SPESIFIK pertanyaan refleksi
+            * Jelaskan bagaimana guru menilai pencapaian tujuan pembelajaran
+            * PENTING: Total waktu semua aktivitas harus TEPAT ${timeAllocation.akhir} menit
       
       6. ASESMEN:
          - Asesmen diagnostik (untuk mengetahui kondisi awal peserta didik)
