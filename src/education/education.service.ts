@@ -204,10 +204,12 @@ export class EducationService {
   }
 
   // Helper method to parse allocation time and calculate time distribution
-  private parseTimeAllocation(alokasiWaktu: string): { total: number, awal: number, inti: number, akhir: number } {
+  private parseTimeAllocation(alokasiWaktu: string): { total: number, awal: number, inti: number, akhir: number, sesi: number, menitPerSesi: number } {
     try {
       // Parse format like "2x45 menit", "3x40 menit", "90 menit", etc.
       let totalMinutes = 0;
+      let sessions = 1;
+      let minutesPerSession = 0;
 
       // Remove extra spaces and convert to lowercase
       const cleanInput = alokasiWaktu.toLowerCase().trim();
@@ -215,8 +217,8 @@ export class EducationService {
       // Check for format "NxM menit" 
       const multiplyMatch = cleanInput.match(/(\d+)\s*x\s*(\d+)\s*menit/);
       if (multiplyMatch) {
-        const sessions = parseInt(multiplyMatch[1]);
-        const minutesPerSession = parseInt(multiplyMatch[2]);
+        sessions = parseInt(multiplyMatch[1]);
+        minutesPerSession = parseInt(multiplyMatch[2]);
         totalMinutes = sessions * minutesPerSession;
       }
       // Check for format "N menit"
@@ -224,30 +226,28 @@ export class EducationService {
         const directMatch = cleanInput.match(/(\d+)\s*menit/);
         if (directMatch) {
           totalMinutes = parseInt(directMatch[1]);
+          minutesPerSession = totalMinutes;
         }
       }
 
       // Default to 90 minutes if parsing fails
       if (totalMinutes <= 0) {
         totalMinutes = 90;
+        minutesPerSession = 90;
       }
 
-      // Calculate time distribution
-      const waktuAkhir = 10; // Fixed 10 minutes for closing
-      let waktuAwal = Math.min(15, Math.max(10, Math.floor(totalMinutes * 0.15))); // 10-15 minutes for opening
-
-      // Ensure minimum time for core activities
-      if (totalMinutes - waktuAwal - waktuAkhir < 20) {
-        waktuAwal = Math.max(10, totalMinutes - waktuAkhir - 20);
-      }
-
-      const waktuInti = totalMinutes - waktuAwal - waktuAkhir;
+      // Calculate time distribution per session
+      const waktuAkhir = Math.round(minutesPerSession * 0.1); // 10% of session time for closing
+      const waktuAwal = Math.round(minutesPerSession * 0.15); // 15% of session time for opening
+      const waktuInti = minutesPerSession - waktuAwal - waktuAkhir; // Remaining time for core activities
 
       return {
         total: totalMinutes,
         awal: waktuAwal,
         inti: waktuInti,
-        akhir: waktuAkhir
+        akhir: waktuAkhir,
+        sesi: sessions,
+        menitPerSesi: minutesPerSession
       };
     } catch (error) {
       // Default allocation if parsing fails
@@ -255,7 +255,9 @@ export class EducationService {
         total: 90,
         awal: 15,
         inti: 65,
-        akhir: 10
+        akhir: 10,
+        sesi: 1,
+        menitPerSesi: 90
       };
     }
   }
@@ -426,17 +428,35 @@ export class EducationService {
          - Konteks kehidupan nyata yang relevan dengan peserta didik
       
       5. KEGIATAN PEMBELAJARAN:
-         - Kegiatan Pembuka (${timeAllocation.awal} menit):Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
+         Alokasi waktu total: ${timeAllocation.total} menit (${timeAllocation.sesi} sesi x ${timeAllocation.menitPerSesi} menit)
+         
+         Untuk setiap sesi pembelajaran (${timeAllocation.menitPerSesi} menit):
+         
+         A. Kegiatan Pembuka (${timeAllocation.awal} menit):
+            * Minimal 5-7 aktivitas TERSTRUKTUR dengan estimasi waktu per aktivitas
             * Harus mencakup: salam pembuka, doa, cek kehadiran, apersepsi, motivasi, penyampaian tujuan pembelajaran, pre-test/review
             * Berikan pertanyaan spesifik yang digunakan untuk memancing pengetahuan awal siswa
             * Jelaskan bagaimana guru mengaitkan materi dengan kehidupan sehari-hari
             * PENTING: Total waktu semua aktivitas harus TEPAT ${timeAllocation.awal} menit
-         - Kegiatan Inti (${timeAllocation.inti} menit): Eksplorasi, elaborasi, konfirmasi dengan pendekatan student-centered , evaluasi akhir setiap individu
-        - Kegiatan Penutup (${timeAllocation.akhir} Menit): Minimal 5 aktivitas DETAIL dengan durasi spesifik
+         
+         B. Kegiatan Inti (${timeAllocation.inti} menit):
+            * Eksplorasi, elaborasi, konfirmasi dengan pendekatan student-centered
+            * Evaluasi akhir setiap individu
+            * Pembagian aktivitas yang jelas dengan durasi spesifik
+            * PENTING: Total waktu semua aktivitas harus TEPAT ${timeAllocation.inti} menit
+         
+         C. Kegiatan Penutup (${timeAllocation.akhir} menit):
+            * Minimal 5 aktivitas DETAIL dengan durasi spesifik
             * Harus mencakup: refleksi, kesimpulan, post-test/evaluasi, umpan balik, penyampaian materi selanjutnya, penugasan, dan salam penutup
             * Berikan contoh SPESIFIK pertanyaan refleksi
             * Jelaskan bagaimana guru menilai pencapaian tujuan pembelajaran
             * PENTING: Total waktu semua aktivitas harus TEPAT ${timeAllocation.akhir} menit
+         
+         CATATAN PENTING:
+         - Jika pembelajaran terdiri dari ${timeAllocation.sesi} sesi, buat pembagian materi dan aktivitas yang berkesinambungan antar sesi
+         - Setiap sesi harus memiliki target pencapaian yang jelas
+         - Pastikan ada pengaitan materi antara sesi sebelumnya dengan sesi selanjutnya
+         - Total waktu per sesi harus TEPAT ${timeAllocation.menitPerSesi} menit
       
       6. ASESMEN:
          - Asesmen diagnostik (untuk mengetahui kondisi awal peserta didik)
