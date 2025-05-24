@@ -215,7 +215,6 @@ export class EducationService {
       if (schema.length > 0 && response.length > 0) {
         return this.validateStructure(response[0], schema[0], `${path}[0]`);
       }
-
       return true;
     }
 
